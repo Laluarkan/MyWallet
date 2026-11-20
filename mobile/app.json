@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.mywallet.app",
       "adaptiveIcon": {
         "backgroundColor": "#0A111F",
         "foregroundImage": "./assets/android-icon-foreground.png",
