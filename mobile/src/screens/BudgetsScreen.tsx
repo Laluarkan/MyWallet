@@ -127,15 +127,15 @@ export const BudgetsScreen = () => {
           <Text style={styles.summaryLabel}>Total Anggaran Aktif</Text>
           <View style={styles.summaryAmounts}>
             <Text style={styles.summarySpent}>{formatRupiah(totalBudgetSpent)}</Text>
-            <Text style={styles.summaryLimit}> / {formatRupiah(totalBudgetLimit)}</Text>
+            <Text style={styles.summaryLimit}>{` / ${formatRupiah(totalBudgetLimit)}`}</Text>
           </View>
           <View style={{ marginTop: 12 }}>
             <ProgressBar percentage={overallPercentage} height={10} />
           </View>
           <View style={styles.summaryFooter}>
-            <Text style={styles.summaryFooterText}>{overallPercentage}% terpakai</Text>
+            <Text style={styles.summaryFooterText}>{`${overallPercentage}% terpakai`}</Text>
             <Text style={styles.summaryFooterText}>
-              Sisa {formatRupiah(Math.max(totalBudgetLimit - totalBudgetSpent, 0))}
+              {`Sisa ${formatRupiah(Math.max(totalBudgetLimit - totalBudgetSpent, 0))}`}
             </Text>
           </View>
         </View>
@@ -201,10 +201,11 @@ export const BudgetsScreen = () => {
                 <ProgressBar percentage={b.percentage} />
                 <View style={styles.progressDetails}>
                   <Text style={styles.spentText}>
-                    Terpakai: <Text style={{ fontWeight: '700' }}>{formatRupiah(b.totalSpent)}</Text>
+                    {'Terpakai: '}
+                    <Text style={{ fontWeight: '700' }}>{formatRupiah(b.totalSpent)}</Text>
                   </Text>
                   <Text style={styles.limitText}>
-                    Limit: {formatRupiah(b.limitAmount)}
+                    {`Limit: ${formatRupiah(b.limitAmount)}`}
                   </Text>
                 </View>
               </View>
@@ -213,12 +214,12 @@ export const BudgetsScreen = () => {
                 <View style={styles.overBudgetWarning}>
                   <Ionicons name="alert-circle" size={14} color={colors.expense} />
                   <Text style={styles.overBudgetText}>
-                    Melebihi anggaran sebesar {formatRupiah(b.totalSpent - b.limitAmount)}!
+                    {`Melebihi anggaran sebesar ${formatRupiah(b.totalSpent - b.limitAmount)}!`}
                   </Text>
                 </View>
               ) : (
                 <Text style={styles.remainingText}>
-                  Sisa anggaran: {formatRupiah(b.remaining)}
+                  {`Sisa anggaran: ${formatRupiah(b.remaining)}`}
                 </Text>
               )}
             </View>

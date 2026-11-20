@@ -358,20 +358,22 @@ export const localStorage = {
     }
 
     if (debt.type === 'DEBT') {
-      wallet.currentBalance -= payAmount;
+      wallet.currentBalance = Number(wallet.currentBalance || 0) - payAmount;
       await localStorage.createTransaction({
         type: 'EXPENSE',
         amount: payAmount,
         sourceWalletId: walletId,
         notes: `Bayar Hutang ke ${debt.personName} (${notes || ''})`,
+        skipWalletUpdate: true,
       });
     } else {
-      wallet.currentBalance += payAmount;
+      wallet.currentBalance = Number(wallet.currentBalance || 0) + payAmount;
       await localStorage.createTransaction({
         type: 'INCOME',
         amount: payAmount,
         sourceWalletId: walletId,
         notes: `Terima Pelunasan Piutang dari ${debt.personName} (${notes || ''})`,
+        skipWalletUpdate: true,
       });
     }
 

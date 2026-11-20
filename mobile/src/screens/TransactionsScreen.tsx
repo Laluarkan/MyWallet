@@ -169,9 +169,7 @@ export const TransactionsScreen = () => {
                   {tx.category?.name || (tx.type === 'TRANSFER' ? 'Transfer Saldo' : 'Lain-lain')}
                 </Text>
                 <Text style={styles.txWalletDate}>
-                  {tx.sourceWallet?.name}
-                  {tx.destinationWallet ? ` ➔ ${tx.destinationWallet.name}` : ''} •{' '}
-                  {formatDate(tx.transactionDate)}
+                  {`${tx.sourceWallet?.name || 'Dompet'}${tx.destinationWallet ? ` ➔ ${tx.destinationWallet.name}` : ''} • ${formatDate(tx.transactionDate)}`}
                 </Text>
                 {tx.notes ? <Text style={styles.txNotes}>{tx.notes}</Text> : null}
               </View>

@@ -17,7 +17,11 @@ import { Header } from '../components/Header';
 import { ProgressBar } from '../components/ProgressBar';
 import { Ionicons } from '@expo/vector-icons';
 
-export const GoalsScreen = () => {
+interface GoalsScreenProps {
+  onBack?: () => void;
+}
+
+export const GoalsScreen: React.FC<GoalsScreenProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [goals, setGoals] = useState<any[]>([]);
 
@@ -116,6 +120,7 @@ export const GoalsScreen = () => {
       <Header
         title="Target Tabungan"
         subtitle="Wujudkan impian & celengan dana darurat Anda"
+        onBack={onBack}
         rightActionIcon="add-circle"
         onRightAction={() => setShowAddModal(true)}
       />
@@ -153,7 +158,7 @@ export const GoalsScreen = () => {
                     </View>
                   </View>
 
-                  <Text style={styles.percentageText}>{g.percentage}%</Text>
+                  <Text style={styles.percentageText}>{`${g.percentage}%`}</Text>
                 </View>
 
                 {/* Progress Bar */}
@@ -167,7 +172,7 @@ export const GoalsScreen = () => {
 
                 <View style={styles.amountRow}>
                   <Text style={styles.currentVal}>{formatRupiah(current)}</Text>
-                  <Text style={styles.targetVal}>Target: {formatRupiah(target)}</Text>
+                  <Text style={styles.targetVal}>{`Target: ${formatRupiah(target)}`}</Text>
                 </View>
 
                 {/* Tombol Nabung & Tarik */}

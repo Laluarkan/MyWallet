@@ -114,7 +114,7 @@ export const ResetScreen: React.FC<ResetScreenProps> = ({
           <View style={styles.divider} />
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Jumlah Dompet Terdaftar</Text>
-            <Text style={styles.infoVal}>{wallets.length} Akun / Dompet</Text>
+            <Text style={styles.infoVal}>{`${wallets.length} Akun / Dompet`}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.infoRow}>

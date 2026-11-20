@@ -16,7 +16,11 @@ import { api } from '../services/api';
 import { Header } from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
 
-export const DebtsScreen = () => {
+interface DebtsScreenProps {
+  onBack?: () => void;
+}
+
+export const DebtsScreen: React.FC<DebtsScreenProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'DEBT' | 'RECEIVABLE'>('DEBT');
   const [debts, setDebts] = useState<any[]>([]);
@@ -117,6 +121,7 @@ export const DebtsScreen = () => {
       <Header
         title="Hutang & Piutang"
         subtitle="Pantau kewajiban dan tagihan Anda"
+        onBack={onBack}
         rightActionIcon="add-circle"
         onRightAction={() => setShowAddModal(true)}
       />
@@ -168,7 +173,7 @@ export const DebtsScreen = () => {
             <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
             <Text style={styles.emptyTitle}>Tidak Ada Catatan</Text>
             <Text style={styles.emptyDesc}>
-              Tap (+) untuk mencatat {tab === 'DEBT' ? 'hutang ke orang' : 'piutang orang ke Anda'}.
+              {`Tap (+) untuk mencatat ${tab === 'DEBT' ? 'hutang ke orang' : 'piutang orang ke Anda'}.`}
             </Text>
           </View>
         ) : (
@@ -183,7 +188,7 @@ export const DebtsScreen = () => {
                 <View style={styles.debtCardHeader}>
                   <View>
                     <Text style={styles.personName}>{d.personName}</Text>
-                    <Text style={styles.debtDate}>Dicatat {formatDate(d.createdAt)}</Text>
+                    <Text style={styles.debtDate}>{`Dicatat ${formatDate(d.createdAt)}`}</Text>
                   </View>
 
                   <View
@@ -239,7 +244,7 @@ export const DebtsScreen = () => {
                     style={styles.payActionBtn}
                     onPress={() => {
                       setSelectedDebt(d);
-                      setPayAmountStr(String(remaining));
+                      setPayAmountStr(formatNumberWithDots(remaining));
                       setShowPayModal(true);
                     }}
                   >

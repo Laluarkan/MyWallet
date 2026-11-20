@@ -54,9 +54,9 @@ export default function App() {
       case 'budgets':
         return <BudgetsScreen key={refreshKey} />;
       case 'debts':
-        return <DebtsScreen key={refreshKey} />;
+        return <DebtsScreen key={refreshKey} onBack={() => setCurrentScreen('home')} />;
       case 'goals':
-        return <GoalsScreen key={refreshKey} />;
+        return <GoalsScreen key={refreshKey} onBack={() => setCurrentScreen('home')} />;
       case 'reports':
         return <ReportsScreen key={refreshKey} />;
       case 'wallets':

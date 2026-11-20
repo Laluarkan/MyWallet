@@ -312,7 +312,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     {tx.category?.name || (tx.type === 'TRANSFER' ? 'Transfer Saldo' : 'Lain-lain')}
                   </Text>
                   <Text style={styles.txMeta}>
-                    {tx.sourceWallet?.name} • {formatDate(tx.transactionDate)}
+                    {`${tx.sourceWallet?.name || 'Dompet'} • ${formatDate(tx.transactionDate)}`}
                   </Text>
                   {tx.notes ? <Text style={styles.txNotes}>{tx.notes}</Text> : null}
                 </View>
