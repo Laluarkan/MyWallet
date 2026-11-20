@@ -1,0 +1,66 @@
+// Privacy-First Universal Backend Schema
+// Hanya menyimpan data akun/user & preferensi non-keuangan.
+// Seluruh nominal keuangan dan transaksi tersimpan 100% lokal di perangkat pengguna.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+}
+
+model User {
+  id               String            @id @default(uuid())
+  name             String
+  email            String            @unique
+  passwordHash     String
+  avatarUrl        String?
+  role             UserRole          @default(USER)
+  tier             SubscriptionTier  @default(FREE)
+  lastLoginAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  cloudBackups     CloudBackup[]
+  userPreferences  UserPreference?
+
+  @@map("users")
+}
+
+model UserPreference {
+  id               String            @id @default(uuid())
+  userId           String            @unique
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency         String            @default("IDR")
+  theme            String            @default("system")
+  language         String            @default("id")
+  notifications    Boolean           @default(true)
+  updatedAt        DateTime          @updatedAt
+
+  @@map("user_preferences")
+}
+
+model CloudBackup {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  backupName       String            @default("Pencadangan Otomatis")
+  // Payload aman: JSON terenkripsi data lokal dari HP
+  encryptedPayload String            @db.Text
+  deviceInfo       String?
+  createdAt        DateTime          @default(now())
+
+  @@map("cloud_backups")
+}
