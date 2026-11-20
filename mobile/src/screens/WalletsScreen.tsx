@@ -12,7 +12,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { colors } from '../theme/colors';
-import { formatRupiah, formatCurrency } from '../utils/format';
+import {
+  formatRupiah,
+  formatCurrency,
+  formatNumberWithDots,
+  parseNumberFromDots,
+  formatUsdInput,
+  parseUsdInput,
+} from '../utils/format';
 import { api } from '../services/api';
 import { currencyService, DEFAULT_USD_RATE } from '../services/currency';
 import { Header } from '../components/Header';
@@ -83,9 +90,9 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
   };
 
   const handleSaveManualRate = async () => {
-    const val = parseFloat(manualRateStr);
+    const val = parseNumberFromDots(manualRateStr);
     if (!val || val <= 0) {
-      Alert.alert('Perhatian', 'Masukkan nilai kurs yang valid (misal: 16500)');
+      Alert.alert('Perhatian', 'Masukkan nilai kurs yang valid (misal: 16.500)');
       return;
     }
 
@@ -106,12 +113,17 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
       return;
     }
 
+    const initialBal =
+      currency === 'USD'
+        ? parseUsdInput(initialBalanceStr)
+        : parseNumberFromDots(initialBalanceStr);
+
     try {
       await api.createWallet({
         name: name.trim(),
         type,
         currency,
-        initialBalance: parseFloat(initialBalanceStr) || 0,
+        initialBalance: initialBal,
       });
 
       setShowAddModal(false);
@@ -126,7 +138,11 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
   };
 
   const handleAdjustBalance = async () => {
-    const actual = parseFloat(actualBalanceStr);
+    const isUsd = selectedWallet?.currency === 'USD';
+    const actual = isUsd
+      ? parseUsdInput(actualBalanceStr)
+      : parseNumberFromDots(actualBalanceStr);
+
     if (isNaN(actual)) {
       Alert.alert('Perhatian', 'Masukkan saldo riil yang valid');
       return;
@@ -215,7 +231,7 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
             <TouchableOpacity
               style={[styles.exchangeBtn, { backgroundColor: colors.cardAlt }]}
               onPress={() => {
-                setManualRateStr(String(usdRate));
+                setManualRateStr(formatNumberWithDots(usdRate));
                 setShowRateModal(true);
               }}
             >
@@ -270,7 +286,11 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
                   style={styles.adjustBtn}
                   onPress={() => {
                     setSelectedWallet(w);
-                    setActualBalanceStr(String(w.currentBalance));
+                    if (w.currency === 'USD') {
+                      setActualBalanceStr(String(w.currentBalance));
+                    } else {
+                      setActualBalanceStr(formatNumberWithDots(w.currentBalance));
+                    }
                     setShowAdjustModal(true);
                   }}
                 >
@@ -324,7 +344,10 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
             <View style={styles.currencyToggleRow}>
               <TouchableOpacity
                 style={[styles.currencyPill, currency === 'IDR' && styles.currencyPillActive]}
-                onPress={() => setCurrency('IDR')}
+                onPress={() => {
+                  setCurrency('IDR');
+                  setInitialBalanceStr('');
+                }}
               >
                 <Text style={[styles.currencyPillText, currency === 'IDR' && styles.currencyPillTextActive]}>
                   🇮🇩 IDR (Rupiah Rp)
@@ -333,7 +356,10 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
 
               <TouchableOpacity
                 style={[styles.currencyPill, currency === 'USD' && styles.currencyPillActive]}
-                onPress={() => setCurrency('USD')}
+                onPress={() => {
+                  setCurrency('USD');
+                  setInitialBalanceStr('');
+                }}
               >
                 <Text style={[styles.currencyPillText, currency === 'USD' && styles.currencyPillTextActive]}>
                   🇺🇸 USD (Dollar $)
@@ -377,14 +403,33 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
             <Text style={styles.formLabel}>
               Saldo Awal ({currency === 'USD' ? '$ USD' : 'Rp IDR'})
             </Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              placeholder={currency === 'USD' ? '0.00 (misal: 100)' : '0 (misal: 500000)'}
-              placeholderTextColor={colors.textMuted}
-              value={initialBalanceStr}
-              onChangeText={setInitialBalanceStr}
-            />
+            {currency === 'USD' ? (
+              <>
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00 (misal: 100.50)"
+                  placeholderTextColor={colors.textMuted}
+                  value={initialBalanceStr}
+                  onChangeText={(text) => setInitialBalanceStr(formatUsdInput(text))}
+                />
+                <View style={styles.usdHintBox}>
+                  <Ionicons name="information-circle-outline" size={15} color="#1E40AF" />
+                  <Text style={styles.usdHintText}>
+                    Untuk dolar, gunakan tanda titik (.) untuk sen/desimal, contoh: 25.50 (bukan koma).
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <TextInput
+                style={styles.modalInput}
+                keyboardType="numeric"
+                placeholder="0 (misal: 500.000)"
+                placeholderTextColor={colors.textMuted}
+                value={initialBalanceStr}
+                onChangeText={(text) => setInitialBalanceStr(formatNumberWithDots(text))}
+              />
+            )}
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleCreateWallet}>
               <Text style={styles.saveBtnText}>Simpan Dompet</Text>
@@ -411,12 +456,33 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
             <Text style={styles.formLabel}>
               Saldo Aktual Saat Ini ({selectedWallet?.currency === 'USD' ? '$ USD' : 'Rp IDR'})
             </Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              value={actualBalanceStr}
-              onChangeText={setActualBalanceStr}
-            />
+            {selectedWallet?.currency === 'USD' ? (
+              <>
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00 (misal: 100.50)"
+                  placeholderTextColor={colors.textMuted}
+                  value={actualBalanceStr}
+                  onChangeText={(text) => setActualBalanceStr(formatUsdInput(text))}
+                />
+                <View style={styles.usdHintBox}>
+                  <Ionicons name="information-circle-outline" size={15} color="#1E40AF" />
+                  <Text style={styles.usdHintText}>
+                    Untuk dolar, gunakan tanda titik (.) untuk sen/desimal, contoh: 25.50 (bukan koma).
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <TextInput
+                style={styles.modalInput}
+                keyboardType="numeric"
+                placeholder="0 (misal: 20.000)"
+                placeholderTextColor={colors.textMuted}
+                value={actualBalanceStr}
+                onChangeText={(text) => setActualBalanceStr(formatNumberWithDots(text))}
+              />
+            )}
 
             <Text style={styles.formLabel}>Alasan / Keterangan (Opsional)</Text>
             <TextInput
@@ -453,10 +519,10 @@ export const WalletsScreen: React.FC<WalletsScreenProps> = ({
             <TextInput
               style={styles.modalInput}
               keyboardType="numeric"
-              placeholder="Contoh: 16500"
+              placeholder="Contoh: 16.500"
               placeholderTextColor={colors.textMuted}
               value={manualRateStr}
-              onChangeText={setManualRateStr}
+              onChangeText={(text) => setManualRateStr(formatNumberWithDots(text))}
             />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveManualRate}>
@@ -796,6 +862,25 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 16,
     color: colors.text,
+  },
+  usdHintBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginTop: -8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  usdHintText: {
+    fontSize: 11,
+    color: '#1E40AF',
+    flex: 1,
+    lineHeight: 16,
   },
   saveBtn: {
     backgroundColor: colors.primary,

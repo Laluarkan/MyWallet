@@ -11,7 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { colors } from '../theme/colors';
-import { formatRupiah, formatDate } from '../utils/format';
+import { formatRupiah, formatDate, formatNumberWithDots, parseNumberFromDots } from '../utils/format';
 import { api } from '../services/api';
 import { Header } from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,7 +60,7 @@ export const DebtsScreen = () => {
   }, [tab]);
 
   const handleCreateDebt = async () => {
-    const totalAmount = parseFloat(amountStr);
+    const totalAmount = parseNumberFromDots(amountStr);
     if (!personName.trim()) {
       Alert.alert('Perhatian', 'Nama pihak/orang wajib diisi');
       return;
@@ -90,7 +90,7 @@ export const DebtsScreen = () => {
   };
 
   const handlePayDebt = async () => {
-    const amount = parseFloat(payAmountStr);
+    const amount = parseNumberFromDots(payAmountStr);
     if (!amount || amount <= 0) {
       Alert.alert('Perhatian', 'Nominal pembayaran harus lebih dari 0');
       return;
@@ -284,10 +284,10 @@ export const DebtsScreen = () => {
             <TextInput
               style={styles.modalInput}
               keyboardType="numeric"
-              placeholder="Contoh: 500000"
+              placeholder="Contoh: 500.000"
               placeholderTextColor={colors.textMuted}
               value={amountStr}
-              onChangeText={setAmountStr}
+              onChangeText={(text) => setAmountStr(formatNumberWithDots(text))}
             />
 
             <Text style={styles.formLabel}>Catatan (Opsional)</Text>
@@ -344,7 +344,7 @@ export const DebtsScreen = () => {
               placeholder="0"
               placeholderTextColor={colors.textMuted}
               value={payAmountStr}
-              onChangeText={setPayAmountStr}
+              onChangeText={(text) => setPayAmountStr(formatNumberWithDots(text))}
             />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handlePayDebt}>

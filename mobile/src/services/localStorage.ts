@@ -83,7 +83,8 @@ export const localStorage = {
     const wallet = wallets.find((w: any) => w.id === id);
     if (!wallet) throw new Error('Dompet tidak ditemukan');
 
-    const diff = actualBalance - Number(wallet.currentBalance);
+    const current = Number(wallet.currentBalance || 0);
+    const diff = actualBalance - current;
     wallet.currentBalance = actualBalance;
     await localStorage.saveWallets(wallets);
 
@@ -94,6 +95,7 @@ export const localStorage = {
         sourceWalletId: id,
         notes: notes || `Penyesuaian saldo (${diff > 0 ? '+' : ''}${diff})`,
         transactionDate: new Date().toISOString(),
+        skipWalletUpdate: true,
       });
     }
   },
@@ -144,14 +146,16 @@ export const localStorage = {
     const amount = Number(data.amount);
     const feeAmount = Number(data.feeAmount || 0);
 
-    // Update Saldo Dompet
-    if (data.type === 'EXPENSE') {
-      sourceWallet.currentBalance = Number(sourceWallet.currentBalance) - (amount + feeAmount);
-    } else if (data.type === 'INCOME') {
-      sourceWallet.currentBalance = Number(sourceWallet.currentBalance) + amount;
-    } else if (data.type === 'TRANSFER' && destWallet) {
-      sourceWallet.currentBalance = Number(sourceWallet.currentBalance) - (amount + feeAmount);
-      destWallet.currentBalance = Number(destWallet.currentBalance) + amount;
+    // Update Saldo Dompet (hanya jika bukan penyesuaian saldo langsung)
+    if (!data.skipWalletUpdate) {
+      if (data.type === 'EXPENSE') {
+        sourceWallet.currentBalance = Number(sourceWallet.currentBalance) - (amount + feeAmount);
+      } else if (data.type === 'INCOME') {
+        sourceWallet.currentBalance = Number(sourceWallet.currentBalance) + amount;
+      } else if (data.type === 'TRANSFER' && destWallet) {
+        sourceWallet.currentBalance = Number(sourceWallet.currentBalance) - (amount + feeAmount);
+        destWallet.currentBalance = Number(destWallet.currentBalance) + amount;
+      }
     }
 
     const newTx = {
@@ -247,16 +251,44 @@ export const localStorage = {
   createBudget: async (data: any) => {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.BUDGETS);
     const budgets: any[] = raw ? JSON.parse(raw) : [];
+    const existingIndex = budgets.findIndex((b) => b.categoryId === data.categoryId);
     const newBudget = {
-      id: 'b_' + Date.now(),
+      id: existingIndex !== -1 ? budgets[existingIndex].id : 'b_' + Date.now(),
       categoryId: data.categoryId,
       limitAmount: Number(data.limitAmount),
       period: 'MONTHLY',
       createdAt: new Date().toISOString(),
     };
-    budgets.push(newBudget);
+    if (existingIndex !== -1) {
+      budgets[existingIndex] = newBudget;
+    } else {
+      budgets.push(newBudget);
+    }
     await AsyncStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(budgets));
     return newBudget;
+  },
+
+  applyBulkBudgets: async (allocations: { categoryId: string; limitAmount: number }[]) => {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.BUDGETS);
+    let budgets: any[] = raw ? JSON.parse(raw) : [];
+
+    for (const item of allocations) {
+      const idx = budgets.findIndex((b) => b.categoryId === item.categoryId);
+      if (idx !== -1) {
+        budgets[idx].limitAmount = Number(item.limitAmount);
+      } else {
+        budgets.push({
+          id: 'b_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+          categoryId: item.categoryId,
+          limitAmount: Number(item.limitAmount),
+          period: 'MONTHLY',
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    await AsyncStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(budgets));
+    return budgets;
   },
 
   deleteBudget: async (id: string) => {
@@ -499,46 +531,92 @@ export const localStorage = {
   },
 
   // Category Breakdown for Reports
-  getCategoryBreakdown: async () => {
+  getCategoryBreakdown: async (month?: number, year?: number) => {
     const transactions = await localStorage.getTransactions();
     const now = new Date();
-    const curYear = now.getFullYear();
-    const curMonth = now.getMonth();
+    const curYear = year !== undefined ? year : now.getFullYear();
+    const curMonth = month !== undefined ? month : now.getMonth();
 
-    const catMap: { [key: string]: { name: string; color: string; total: number } } = {};
+    const catMap: { [key: string]: { name: string; color: string; icon: string; total: number; count: number } } = {};
+    const incomeCatMap: { [key: string]: { name: string; color: string; icon: string; total: number; count: number } } = {};
     let totalExpense = 0;
+    let totalIncome = 0;
+    let txCount = 0;
 
     for (const t of transactions) {
       const d = new Date(t.transactionDate);
-      if (t.type === 'EXPENSE' && d.getFullYear() === curYear && d.getMonth() === curMonth) {
-        const catName = t.category?.name || 'Lain-lain';
-        const catColor = t.category?.color || '#6B7280';
+      if (d.getFullYear() === curYear && d.getMonth() === curMonth) {
+        txCount++;
         const amt = Number(t.amount);
-        totalExpense += amt;
+        const fee = Number(t.feeAmount || 0);
 
-        if (!catMap[catName]) {
-          catMap[catName] = { name: catName, color: catColor, total: 0 };
+        if (t.type === 'EXPENSE') {
+          totalExpense += amt + fee;
+          const catName = t.category?.name || 'Lain-lain';
+          const catColor = t.category?.color || '#EF4444';
+          const catIcon = t.category?.icon || 'pricetag';
+
+          if (!catMap[catName]) {
+            catMap[catName] = { name: catName, color: catColor, icon: catIcon, total: 0, count: 0 };
+          }
+          catMap[catName].total += amt + fee;
+          catMap[catName].count++;
+        } else if (t.type === 'INCOME') {
+          totalIncome += amt;
+          const catName = t.category?.name || 'Pemasukan Lain';
+          const catColor = t.category?.color || '#10B981';
+          const catIcon = t.category?.icon || 'cash';
+
+          if (!incomeCatMap[catName]) {
+            incomeCatMap[catName] = { name: catName, color: catColor, icon: catIcon, total: 0, count: 0 };
+          }
+          incomeCatMap[catName].total += amt;
+          incomeCatMap[catName].count++;
         }
-        catMap[catName].total += amt;
       }
     }
 
-    const breakdown = Object.values(catMap).map((c) => ({
-      ...c,
-      percentage: totalExpense > 0 ? Math.round((c.total / totalExpense) * 100) : 0,
-    })).sort((a, b) => b.total - a.total);
+    const expenseBreakdown = Object.values(catMap)
+      .map((c) => ({
+        ...c,
+        percentage: totalExpense > 0 ? Math.round((c.total / totalExpense) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
 
-    return { totalExpense, breakdown };
+    const incomeBreakdown = Object.values(incomeCatMap)
+      .map((c) => ({
+        ...c,
+        percentage: totalIncome > 0 ? Math.round((c.total / totalIncome) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    const netCashFlow = totalIncome - totalExpense;
+    const savingRate = totalIncome > 0 ? Math.max(Math.round((netCashFlow / totalIncome) * 100), 0) : 0;
+
+    return {
+      month: curMonth,
+      year: curYear,
+      totalExpense,
+      totalIncome,
+      netCashFlow,
+      savingRate,
+      txCount,
+      breakdown: expenseBreakdown,
+      expenseBreakdown,
+      incomeBreakdown,
+    };
   },
 
   // Monthly Trend for Reports
-  getMonthlyTrend: async () => {
+  getMonthlyTrend: async (refMonth?: number, refYear?: number) => {
     const transactions = await localStorage.getTransactions();
     const now = new Date();
+    const baseYear = refYear !== undefined ? refYear : now.getFullYear();
+    const baseMonth = refMonth !== undefined ? refMonth : now.getMonth();
     const trend = [];
 
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(baseYear, baseMonth - i, 1);
       const yr = d.getFullYear();
       const mo = d.getMonth();
 
@@ -555,6 +633,7 @@ export const localStorage = {
 
       trend.push({
         month: d.toLocaleString('id-ID', { month: 'short' }),
+        monthIndex: mo,
         year: yr,
         income: inc,
         expense: exp,

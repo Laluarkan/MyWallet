@@ -6,7 +6,7 @@ import { localStorage } from './localStorage';
 // =========================================================================
 // Jika ingin menggunakan backend cloud (Render), masukkan URL Anda di sini:
 // Contoh: 'https://project-wallet-api.onrender.com/api'
-export const RENDER_BACKEND_URL = '';
+export const RENDER_BACKEND_URL = 'https://mywallet-21zm.onrender.com/api';
 
 // Jika RENDER_BACKEND_URL kosong, aplikasi OTOMATIS berjalan dalam mode:
 // "LOCAL-FIRST / OFFLINE-FIRST" (Semua data tersimpan permanen di HP Anda tanpa server)
@@ -71,21 +71,21 @@ export const api = {
   },
 
   getCategoryBreakdown: async (month?: number, year?: number) => {
-    if (!USE_CLOUD_BACKEND) return localStorage.getCategoryBreakdown();
+    if (!USE_CLOUD_BACKEND) return localStorage.getCategoryBreakdown(month, year);
     try {
-      const query = month && year ? `?month=${month}&year=${year}` : '';
+      const query = month !== undefined && year !== undefined ? `?month=${month}&year=${year}` : '';
       return await request<any>(`/reports/category-breakdown${query}`);
     } catch {
-      return localStorage.getCategoryBreakdown();
+      return localStorage.getCategoryBreakdown(month, year);
     }
   },
 
-  getMonthlyTrend: async () => {
-    if (!USE_CLOUD_BACKEND) return localStorage.getMonthlyTrend();
+  getMonthlyTrend: async (month?: number, year?: number) => {
+    if (!USE_CLOUD_BACKEND) return localStorage.getMonthlyTrend(month, year);
     try {
       return await request<any>('/reports/monthly-trend');
     } catch {
-      return localStorage.getMonthlyTrend();
+      return localStorage.getMonthlyTrend(month, year);
     }
   },
 
@@ -205,6 +205,10 @@ export const api = {
     } catch {
       return localStorage.deleteBudget(id);
     }
+  },
+
+  applyBulkBudgets: async (allocations: { categoryId: string; limitAmount: number }[]) => {
+    return localStorage.applyBulkBudgets(allocations);
   },
 
   // Debts & Loans

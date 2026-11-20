@@ -11,6 +11,7 @@ import { colors } from '../theme/colors';
 import { formatRupiah, formatDate } from '../utils/format';
 import { api } from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
+import { BudgetAllocationModal } from '../components/BudgetAllocationModal';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -24,6 +25,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [showBalance, setShowBalance] = useState(true);
   const [overview, setOverview] = useState<any>(null);
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -47,6 +49,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const netCashFlow = overview?.monthly?.netCashFlow || 0;
   const wallets = overview?.wallets || [];
   const recentTransactions = overview?.recentTransactions || [];
+
+  // Dana likuid untuk pembagian alokasi ideal (hanya CASH, EWALLET, BANK. INVESTMENT di-exclude)
+  const liquidWallets = wallets.filter((w: any) =>
+    ['CASH', 'EWALLET', 'BANK'].includes(w.type?.toUpperCase())
+  );
+  const liquidBalance = liquidWallets.reduce(
+    (sum: number, w: any) => sum + Math.max(Number(w.currentBalance || 0), 0),
+    0
+  );
 
   return (
     <ScrollView
@@ -153,11 +164,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         <TouchableOpacity style={styles.actionBtn} onPress={() => onNavigate('budgets')}>
           <View style={[styles.actionIconBg, { backgroundColor: colors.warningLight }]}>
-            <Ionicons name="pie-chart" size={24} color={colors.warning} />
+            <Ionicons name="pie-chart" size={22} color={colors.warning} />
           </View>
           <Text style={styles.actionBtnText}>Anggaran</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionBtn} onPress={() => setShowAllocationModal(true)}>
+          <View style={[styles.actionIconBg, { backgroundColor: '#EDE9FE' }]}>
+            <Ionicons name="calculator" size={22} color="#7C3AED" />
+          </View>
+          <Text style={styles.actionBtnText}>Alokasi %</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Smart Budget Allocation Banner */}
+      <TouchableOpacity
+        style={styles.allocationBanner}
+        onPress={() => setShowAllocationModal(true)}
+      >
+        <View style={styles.allocationBannerLeft}>
+          <View style={styles.allocationIconWrap}>
+            <Ionicons name="pie-chart" size={22} color="#7C3AED" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.allocationBannerTitle}>Alokasi Dana Ideal (%)</Text>
+              <View style={styles.badge503020}>
+                <Text style={styles.badge503020Text}>Aturan 50/30/20</Text>
+              </View>
+            </View>
+            <Text style={styles.allocationBannerSub}>
+              Hitung pos makan (25%), tagihan (15%), transport (10%), & tabung (20%) dari dana likuid Anda ({formatRupiah(liquidBalance)})
+            </Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color="#7C3AED" />
+      </TouchableOpacity>
 
       {/* 3. Dompet & Akun (Horizontal Scroll) */}
       <View style={[styles.sectionHeader, { marginTop: 12 }]}>
@@ -297,6 +339,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </View>
 
       <View style={{ height: 100 }} />
+
+      <BudgetAllocationModal
+        visible={showAllocationModal}
+        onClose={() => setShowAllocationModal(false)}
+        wallets={wallets}
+        onApplied={loadData}
+      />
     </ScrollView>
   );
 };
@@ -391,29 +440,77 @@ const styles = StyleSheet.create({
   quickActionGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 6,
   },
   actionBtn: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: 16,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 10,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
   },
   actionIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   actionBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: colors.text,
+  },
+  allocationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  allocationBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: 8,
+  },
+  allocationIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  allocationBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#5B21B6',
+  },
+  badge503020: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  badge503020Text: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  allocationBannerSub: {
+    fontSize: 11,
+    color: '#6D28D9',
+    marginTop: 2,
+    lineHeight: 15,
   },
   walletScroll: {
     marginHorizontal: -16,

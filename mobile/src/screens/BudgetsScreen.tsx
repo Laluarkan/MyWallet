@@ -11,16 +11,19 @@ import {
   RefreshControl,
 } from 'react-native';
 import { colors } from '../theme/colors';
-import { formatRupiah } from '../utils/format';
+import { formatRupiah, formatNumberWithDots, parseNumberFromDots } from '../utils/format';
 import { api } from '../services/api';
 import { Header } from '../components/Header';
 import { ProgressBar } from '../components/ProgressBar';
 import { Ionicons } from '@expo/vector-icons';
+import { BudgetAllocationModal } from '../components/BudgetAllocationModal';
 
 export const BudgetsScreen = () => {
   const [loading, setLoading] = useState(false);
   const [budgets, setBudgets] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
 
   // Form State
   const [categories, setCategories] = useState<any[]>([]);
@@ -30,8 +33,12 @@ export const BudgetsScreen = () => {
   const loadBudgets = async () => {
     setLoading(true);
     try {
-      const data = await api.getBudgets();
+      const [data, walletList] = await Promise.all([
+        api.getBudgets(),
+        api.getWallets(),
+      ]);
       setBudgets(data || []);
+      setWallets(walletList || []);
     } catch (e) {
       console.log('Error loading budgets:', e);
     } finally {
@@ -55,7 +62,7 @@ export const BudgetsScreen = () => {
   }, []);
 
   const handleCreateBudget = async () => {
-    const limit = parseFloat(limitStr);
+    const limit = parseNumberFromDots(limitStr);
     if (!limit || limit <= 0) {
       Alert.alert('Perhatian', 'Masukkan batas anggaran yang valid');
       return;
@@ -132,6 +139,33 @@ export const BudgetsScreen = () => {
             </Text>
           </View>
         </View>
+
+        {/* Banner Smart Alokasi Dana (Aturan 50/30/20) */}
+        <TouchableOpacity
+          style={styles.allocationBanner}
+          onPress={() => setShowAllocationModal(true)}
+        >
+          <View style={styles.allocationBannerLeft}>
+            <View style={styles.allocationIconWrap}>
+              <Ionicons name="sparkles" size={18} color="#7C3AED" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.allocationBannerTitle}>Rekomendasi Alokasi Ideal</Text>
+                <View style={styles.badge503020}>
+                  <Text style={styles.badge503020Text}>50/30/20</Text>
+                </View>
+              </View>
+              <Text style={styles.allocationBannerSub}>
+                Hitung persentase makan, transport, tabungan dari dana likuid Anda & terapkan 1 klik
+              </Text>
+            </View>
+          </View>
+          <View style={styles.allocationBadge}>
+            <Text style={styles.allocationBadgeText}>Hitung</Text>
+            <Ionicons name="chevron-forward" size={12} color="#7C3AED" />
+          </View>
+        </TouchableOpacity>
 
         {/* List Budget Per Kategori */}
         <Text style={styles.sectionTitle}>Batas Per Kategori</Text>
@@ -227,10 +261,10 @@ export const BudgetsScreen = () => {
             <TextInput
               style={styles.modalInput}
               keyboardType="numeric"
-              placeholder="Contoh: 2000000"
+              placeholder="Contoh: 2.000.000"
               placeholderTextColor={colors.textMuted}
               value={limitStr}
-              onChangeText={setLimitStr}
+              onChangeText={(text) => setLimitStr(formatNumberWithDots(text))}
             />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleCreateBudget}>
@@ -239,6 +273,14 @@ export const BudgetsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal Alokasi Dana Ideal */}
+      <BudgetAllocationModal
+        visible={showAllocationModal}
+        onClose={() => setShowAllocationModal(false)}
+        wallets={wallets}
+        onApplied={loadBudgets}
+      />
     </View>
   );
 };
@@ -288,6 +330,68 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     fontWeight: '600',
+  },
+  allocationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  allocationBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: 8,
+  },
+  allocationIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  allocationBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#5B21B6',
+  },
+  badge503020: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  badge503020Text: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  allocationBannerSub: {
+    fontSize: 11,
+    color: '#6D28D9',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  allocationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  allocationBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
   sectionTitle: {
     fontSize: 16,

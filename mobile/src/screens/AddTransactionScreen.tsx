@@ -10,7 +10,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { colors } from '../theme/colors';
-import { formatRupiah } from '../utils/format';
+import {
+  formatRupiah,
+  formatNumberWithDots,
+  parseNumberFromDots,
+  formatUsdInput,
+  parseUsdInput,
+} from '../utils/format';
 import { api } from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -64,13 +70,22 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({
     }
   };
 
+  const selectedWallet = wallets.find((w) => w.id === selectedWalletId);
+  const isUsd = selectedWallet?.currency === 'USD';
+
   const handleAddQuickAmount = (val: number) => {
-    const current = parseFloat(amountStr) || 0;
-    setAmountStr(String(current + val));
+    if (isUsd) {
+      const current = parseUsdInput(amountStr);
+      const updated = current + val;
+      setAmountStr(updated % 1 === 0 ? String(updated) : updated.toFixed(2));
+    } else {
+      const current = parseNumberFromDots(amountStr);
+      setAmountStr(formatNumberWithDots(current + val));
+    }
   };
 
   const handleSubmit = async () => {
-    const amount = parseFloat(amountStr);
+    const amount = isUsd ? parseUsdInput(amountStr) : parseNumberFromDots(amountStr);
     if (!amount || amount <= 0) {
       Alert.alert('Perhatian', 'Masukkan nominal yang valid');
       return;
@@ -91,12 +106,14 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({
       return;
     }
 
+    const feeAmount = isUsd ? parseUsdInput(feeStr) : parseNumberFromDots(feeStr);
+
     setLoading(true);
     try {
       await api.createTransaction({
         type,
         amount,
-        feeAmount: parseFloat(feeStr) || 0,
+        feeAmount,
         sourceWalletId: selectedWalletId,
         destinationWalletId: type === 'TRANSFER' ? selectedDestWalletId : null,
         categoryId: type !== 'TRANSFER' ? selectedCategoryId : null,
@@ -114,7 +131,7 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({
     }
   };
 
-  const rawAmount = parseFloat(amountStr) || 0;
+  const rawAmount = isUsd ? parseUsdInput(amountStr) : parseNumberFromDots(amountStr);
 
   return (
     <View style={styles.container}>
@@ -184,49 +201,75 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({
 
         {/* 2. Amount Input Card */}
         <View style={styles.amountCard}>
-          <Text style={styles.amountLabel}>Nominal Transaksi</Text>
+          <Text style={styles.amountLabel}>
+            Nominal Transaksi ({isUsd ? 'USD $' : 'IDR Rp'})
+          </Text>
           <View style={styles.amountInputRow}>
-            <Text style={styles.currencyPrefix}>Rp</Text>
+            <Text style={styles.currencyPrefix}>{isUsd ? '$' : 'Rp'}</Text>
             <TextInput
               style={styles.amountInput}
-              keyboardType="numeric"
-              placeholder="0"
+              keyboardType={isUsd ? 'decimal-pad' : 'numeric'}
+              placeholder={isUsd ? '0.00' : '0'}
               placeholderTextColor="#CBD5E1"
               value={amountStr}
-              onChangeText={setAmountStr}
+              onChangeText={(text) =>
+                setAmountStr(isUsd ? formatUsdInput(text) : formatNumberWithDots(text))
+              }
               autoFocus
             />
           </View>
+          {isUsd && (
+            <View style={styles.usdHintRow}>
+              <Ionicons name="information-circle-outline" size={14} color="#1E40AF" />
+              <Text style={styles.usdHintText}>
+                Untuk dolar, gunakan tanda titik (.) untuk sen/desimal, contoh: 12.50 (bukan koma).
+              </Text>
+            </View>
+          )}
           {rawAmount > 0 ? (
-            <Text style={styles.amountFormatted}>{formatRupiah(rawAmount)}</Text>
+            <Text style={styles.amountFormatted}>
+              {isUsd
+                ? `$ ${rawAmount.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                : formatRupiah(rawAmount)}
+            </Text>
           ) : null}
 
           {/* Quick Amount Pills */}
           <View style={styles.quickAmountRow}>
-            <TouchableOpacity
-              style={styles.quickPill}
-              onPress={() => handleAddQuickAmount(10000)}
-            >
-              <Text style={styles.quickPillText}>+10rb</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickPill}
-              onPress={() => handleAddQuickAmount(50000)}
-            >
-              <Text style={styles.quickPillText}>+50rb</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickPill}
-              onPress={() => handleAddQuickAmount(100000)}
-            >
-              <Text style={styles.quickPillText}>+100rb</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickPill}
-              onPress={() => handleAddQuickAmount(500000)}
-            >
-              <Text style={styles.quickPillText}>+500rb</Text>
-            </TouchableOpacity>
+            {isUsd ? (
+              <>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(1)}>
+                  <Text style={styles.quickPillText}>+$1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(5)}>
+                  <Text style={styles.quickPillText}>+$5</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(10)}>
+                  <Text style={styles.quickPillText}>+$10</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(50)}>
+                  <Text style={styles.quickPillText}>+$50</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(10000)}>
+                  <Text style={styles.quickPillText}>+10rb</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(50000)}>
+                  <Text style={styles.quickPillText}>+50rb</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(100000)}>
+                  <Text style={styles.quickPillText}>+100rb</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickPill} onPress={() => handleAddQuickAmount(500000)}>
+                  <Text style={styles.quickPillText}>+500rb</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -292,14 +335,18 @@ export const AddTransactionScreen: React.FC<AddTransactionScreenProps> = ({
               ))}
             </ScrollView>
 
-            <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Biaya Transfer / Admin (Opsional)</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+              Biaya Transfer / Admin ({isUsd ? '$ USD' : 'Rp IDR'}) (Opsional)
+            </Text>
             <TextInput
               style={styles.textInput}
-              keyboardType="numeric"
-              placeholder="0 (misal: 2500 atau 6500)"
+              keyboardType={isUsd ? 'decimal-pad' : 'numeric'}
+              placeholder={isUsd ? '0.00 (misal: 1.50)' : '0 (misal: 2.500 atau 6.500)'}
               placeholderTextColor={colors.textMuted}
               value={feeStr}
-              onChangeText={setFeeStr}
+              onChangeText={(text) =>
+                setFeeStr(isUsd ? formatUsdInput(text) : formatNumberWithDots(text))
+              }
             />
           </>
         )}
@@ -474,6 +521,24 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     fontWeight: '600',
     marginTop: 4,
+  },
+  usdHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  usdHintText: {
+    fontSize: 11,
+    color: '#1E40AF',
+    flex: 1,
+    lineHeight: 15,
   },
   quickAmountRow: {
     flexDirection: 'row',

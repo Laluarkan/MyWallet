@@ -11,7 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { colors } from '../theme/colors';
-import { formatRupiah } from '../utils/format';
+import { formatRupiah, formatNumberWithDots, parseNumberFromDots } from '../utils/format';
 import { api } from '../services/api';
 import { Header } from '../components/Header';
 import { ProgressBar } from '../components/ProgressBar';
@@ -58,7 +58,7 @@ export const GoalsScreen = () => {
   }, []);
 
   const handleCreateGoal = async () => {
-    const target = parseFloat(targetStr);
+    const target = parseNumberFromDots(targetStr);
     if (!name.trim()) {
       Alert.alert('Perhatian', 'Nama target tabungan wajib diisi');
       return;
@@ -84,7 +84,7 @@ export const GoalsScreen = () => {
   };
 
   const handleConfirmAction = async () => {
-    const amount = parseFloat(actionAmountStr);
+    const amount = parseNumberFromDots(actionAmountStr);
     if (!amount || amount <= 0) {
       Alert.alert('Perhatian', 'Nominal harus lebih dari 0');
       return;
@@ -229,10 +229,10 @@ export const GoalsScreen = () => {
             <TextInput
               style={styles.modalInput}
               keyboardType="numeric"
-              placeholder="Contoh: 10000000"
+              placeholder="Contoh: 10.000.000"
               placeholderTextColor={colors.textMuted}
               value={targetStr}
-              onChangeText={setTargetStr}
+              onChangeText={(text) => setTargetStr(formatNumberWithDots(text))}
             />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleCreateGoal}>
@@ -284,7 +284,7 @@ export const GoalsScreen = () => {
               placeholder="0"
               placeholderTextColor={colors.textMuted}
               value={actionAmountStr}
-              onChangeText={setActionAmountStr}
+              onChangeText={(text) => setActionAmountStr(formatNumberWithDots(text))}
             />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleConfirmAction}>

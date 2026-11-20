@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { colors } from '../theme/colors';
 import { Header } from '../components/Header';
@@ -133,6 +134,19 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Brand Header */}
+        <View style={styles.brandHeaderCard}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.brandLogo}
+          />
+          <View style={styles.brandInfo}>
+            <Text style={styles.brandTitle}>MyWallet</Text>
+            <Text style={styles.brandSub}>Kelola Keuangan Cerdas & Mandiri</Text>
+            <Text style={styles.brandVersion}>v1.0.0 • Local-First Architecture</Text>
+          </View>
+        </View>
+
         {/* Privacy Guarantee Banner */}
         <View style={styles.privacyBanner}>
           <View style={styles.privacyIconWrap}>
@@ -290,6 +304,46 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+  },
+  brandHeaderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 20,
+    padding: 16,
+    gap: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  brandLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+  },
+  brandInfo: {
+    flex: 1,
+  },
+  brandTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  brandSub: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  brandVersion: {
+    fontSize: 10,
+    color: '#10B981',
+    fontWeight: '700',
+    marginTop: 4,
   },
   privacyBanner: {
     flexDirection: 'row',
